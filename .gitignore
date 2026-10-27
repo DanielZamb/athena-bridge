@@ -1,0 +1,25 @@
+/bin/
+/dist/
+/data/
+/.scratch/
+.aws/
+.env
+.env.*
+!.env.example
+*.test
+.DS_Store
+__pycache__/
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-wal
+*.db-shm
+*.checkpoint.json
+
+# Keep local agent installations out of the public repository.
+/.agents/skills/*
+!/.agents/skills/verify-athena-bridge/
+/.claude/skills/*
+!/.claude/skills/verify-athena-bridge

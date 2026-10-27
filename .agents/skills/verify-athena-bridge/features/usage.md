@@ -1,0 +1,11 @@
+# Local usage log
+
+Run with `--feature usage`. Every other recipe sets `ATHENA_BRIDGE_USAGE_DB=off`; this recipe selects only databases inside its private run resources.
+
+The built CLI records 100 real invocations across version, metadata, query submission/retrieval, status, pretty output, and invalid arguments. Assertions read SQLite through Python's standard library. They check one row per invocation, ten hashed sessions, independent launcher/agent/model dictionaries, millisecond timestamps, effort, stable SQL hashes, failure classes, STRICT tables, WAL, foreign keys, and private file permissions. Models come from a disposable Codex transcript larger than 64 KiB. An empty file initializes version 2; a real v1 file migrates its seconds to milliseconds. Locked and unwritable logs preserve success and failure exits. Four simultaneous CLI processes must append four rows.
+
+The recipe scans the database and live sidecars for SQL, fake credentials, raw session/query IDs, continuation tokens, result values, and non-model transcript content. It retains `usage.db` as a snapshot of the first 100 runs and `usage-metrics.json` with record payload, cell overhead, table allocation, and complete database size. The cell estimate adds four bytes per row for IDs 1 through 100. Fixed schema pages and dictionaries belong to the complete database metric, not the row payload.
+
+Each of the 100 logged invocations has an off counterpart; pair order alternates. `usage-latency.json` retains process wall times, signed on-minus-off deltas, p50/p95, range, machine load, and expected failure counts. Timing excludes evidence-file writes. Every pair must have byte-identical stdout/stderr and the expected exit, and the logged side must produce 100 rows. This is one local sample with a warm filesystem cache after the first calls, not a general latency guarantee or driver comparison.
+
+Go tests cover v1 metadata preservation, identity precedence, Claude/Codex transcript privacy, tail/directory/deadline bounds, UUIDv7 calendar dates, SQL from files/stdin, cancelled commands, reserved filename characters, and future schema versions. Abrupt SIGKILL and power loss cannot guarantee a best-effort completion row. The recipe does not write the real user database or contact AWS.
