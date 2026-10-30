@@ -21,7 +21,7 @@ def source_version():
 
 def release_notes(version):
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    match = re.search(rf"^## {re.escape(version)}(?: .*)?\n(.*?)(?=^## |\Z)", changelog, re.MULTILINE | re.DOTALL)
+    match = re.search(rf"^## {re.escape(version)}(?:[ \t][^\n]*)?\n(.*?)(?=^## |\Z)", changelog, re.MULTILINE | re.DOTALL)
     if match is None or not match.group(1).strip():
         raise SystemExit(f"Add a '## {version}' section with release notes to CHANGELOG.md")
     return match.group(1).strip() + "\n"

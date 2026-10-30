@@ -51,7 +51,7 @@ Add `--pretty` to read the same diagnostics as text. Keep the JSON form for scri
 | `AUTHENTICATION` | Missing, expired, or invalid credentials. | `aws sts get-caller-identity --profile PROFILE`. For SSO, run `aws sso login --profile PROFILE`. |
 | `AUTHORIZATION` | The caller lacks `lambda:InvokeFunction` on the function or alias. | Ask the worker owner for invocation access. The worker's own role does not grant it. |
 | `THROTTLED` | Lambda concurrency or request limits. | Retry later, or raise the function's concurrency. |
-| `TRANSPORT` | Network failure, an interrupted wait, or a failed download. | Connectivity and proxy settings. For `download`, rerun it to request a new link. |
+| `TRANSPORT` | Network failure, or a failed result download. | Connectivity and proxy settings. For `download`, rerun it to request a new link. |
 | `WORKER_FUNCTION` | The Lambda raised an unhandled error or timed out. | The function's CloudWatch logs. |
 | `WORKER_REJECTED` | The worker returned an error. | `worker_code`. See [worker codes](#worker-codes). |
 | `NOT_READY` | Results were requested before the query finished. | `results --query-id QUERY_ID --wait`. |
@@ -77,6 +77,9 @@ Add `--pretty` to read the same diagnostics as text. Keep the JSON form for scri
 | `RESULT_IDENTITY_UNAVAILABLE` | The worker cannot identify a stable result, which `export` requires. |
 | `ROW_TOO_LARGE` | One row exceeds the worker's response size. Select fewer or narrower columns, or use `download`. |
 | `INVALID_RESULT` | The worker received an unexpected result from Athena. Read the worker's logs. |
+| `QUERY_FAILED` | `results` or `download` asked for a query that failed or was cancelled. Run `status --query-id QUERY_ID --format json` to see why. |
+| `DOWNLOAD_UNAVAILABLE` | The query has no result file the worker can serve. Use `results --all --out PATH` or `export` instead of `download`. |
+| `WORKER_ERROR` | The worker hit an unexpected error. Read the worker's logs. |
 | AWS error names | The example worker passes through AWS codes. `InvalidRequestException` means Athena rejected the SQL or a request ID reused with different SQL. `EntityNotFoundException` means the table does not exist. `AccessDeniedException` means the worker's execution role lacks access. |
 
 ## Check configuration
@@ -88,7 +91,7 @@ Run these checks in order. Each one depends on the previous one.
 3. `athena-bridge info --format json` succeeds. This confirms the region, function name, invocation access, and a compatible worker.
 4. `athena-bridge query --sql 'SELECT 1' --all --format json` succeeds. This confirms the worker can run Athena queries.
 
-A failure at step 3 is on the caller side. A failure at step 4 after step 3 succeeds is usually on the worker side: its execution role, workgroup, or result bucket.
+At step 3, `CONFIGURATION`, `AUTHENTICATION`, and `AUTHORIZATION` point to the caller's setup. `WORKER_REJECTED`, `WORKER_FUNCTION`, and `PROTOCOL` point to the worker. A failure at step 4 after step 3 succeeds is usually on the worker side: its execution role, workgroup, or result bucket.
 
 ## Recover a query
 
@@ -100,7 +103,7 @@ athena-bridge results --query-id QUERY_ID --wait --all --format json
 athena-bridge cancel --query-id QUERY_ID --format json
 ```
 
-If a failure arrives before any `query_id`, the diagnostic has `recovery` set to `retry_same_request`. The `START_REQUEST` notice before it holds the `request_id`. Rerun the same command with `--request-id REQUEST_ID`, the identical SQL, and the same database. The worker returns the existing query instead of starting another.
+If a failure arrives before any `query_id` and its `recovery` is `retry_same_request`, the query may have started. The `START_REQUEST` notice before it holds the `request_id`. Rerun the same command with `--request-id REQUEST_ID`, the identical SQL, and the same database. The worker returns the existing query instead of starting another. Any other `recovery` value before a `query_id` means no query started. Follow that value instead.
 
 When `partial_output` is `true`, standard output is incomplete. Discard it, or continue from the last `next_token` with `--next-token`.
 
@@ -114,7 +117,7 @@ When `partial_output` is `true`, standard output is incomplete. Discard it, or c
 - The disk is full, or the directory is not writable.
 - A checkpoint is unreadable, from another version, or locked by a running export. Wait for the other export to finish.
 
-A failed `export` keeps its checkpoint. Resume it with `athena-bridge export --resume CHECKPOINT`. A `CONFIGURATION` failure on resume means the configured function or region differs from the one stored in the checkpoint.
+A failed `export` keeps its checkpoint. Resume it with `athena-bridge export --resume CHECKPOINT`. A `CONFIGURATION` failure on resume means the AWS configuration could not load, for example a missing profile or region, or the configured function or region differs from the one stored in the checkpoint.
 
 ## Report a bug
 

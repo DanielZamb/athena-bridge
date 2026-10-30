@@ -103,7 +103,7 @@ def main():
         write_archive(archive, sorted(files), windows)
         checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
         receipt = temporary / f"{archive_name}.sha256"
-        receipt.write_text(f"{checksum}  {archive_name}\n", encoding="utf-8", newline="\n")
+        receipt.write_bytes(f"{checksum}  {archive_name}\n".encode())
         archive.replace(output / archive.name)
         receipt.replace(output / receipt.name)
     print(output / archive_name)
