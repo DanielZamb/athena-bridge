@@ -2,7 +2,38 @@
 
 A Go CLI that signs requests to your AWS Lambda worker and displays Athena schemas and query results. It supports paginated datasets and complete file downloads. Agents can call the same binary with `--format json`.
 
-The Lambda worker is supplied separately. Implement the [version-one worker contract](docs/lambda-contract.md), then supply its function name or ARN. An optional disposable AWS sandbox in this repository provides a test worker and synthetic data.
+The CLI connects to a user-managed Lambda worker. Adapt the [example worker](examples/worker.md) or implement the [version-one worker contract](docs/lambda-contract.md), then supply its function name or ARN. An optional disposable AWS sandbox in this repository provides a test worker and synthetic data.
+
+## Use a binary download
+
+Download the archive for your platform from [GitHub Releases](https://github.com/DanielZamb/athena-bridge/releases/latest). Builds exist for macOS, Linux, and Windows on `amd64` and `arm64`.
+
+The compact distribution contains a stripped executable, an [agent skill](skills/athena-bridge/SKILL.md), setup instructions, a [troubleshooting guide](docs/troubleshooting.md), the example worker, its contract, and license notices. It excludes tests, databases, sandbox tooling, and development scripts. Running the CLI requires no Go, Python, or system SQLite installation. See the [download setup instructions](docs/distribution.md).
+
+Download the archive's `.sha256` file too, and check the archive before extracting it:
+
+```sh
+shasum -a 256 -c athena-bridge_0.1.0_darwin_arm64.tar.gz.sha256
+tar -xzf athena-bridge_0.1.0_darwin_arm64.tar.gz
+```
+
+On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. In PowerShell, compare `(Get-FileHash athena-bridge_0.1.0_windows_amd64.zip).Hash` with the first field of the `.sha256` file, ignoring case.
+
+Each archive also has a GitHub build provenance attestation. With the [GitHub CLI](https://cli.github.com/), confirm that this repository's release workflow built it:
+
+```sh
+gh attestation verify athena-bridge_0.1.0_darwin_arm64.tar.gz --repo DanielZamb/athena-bridge
+```
+
+The macOS executables are not signed or notarized. A browser download marks the archive as quarantined, and macOS then refuses to run the extracted executable. After checking the checksum, remove the mark from the extracted directory:
+
+```sh
+xattr -dr com.apple.quarantine athena-bridge
+```
+
+Archives downloaded with `curl` or `gh release download` are not quarantined.
+
+From a source checkout, run `make release` to build the host package in `dist/`. See [binary packaging](docs/publishing.md#package-a-binary-download) for other platforms.
 
 ## Build
 
@@ -23,6 +54,12 @@ go build -trimpath -o bin/ ./cmd/athena-bridge
 ```
 
 The first build downloads the Go dependencies listed in `go.mod` and verified by `go.sum`. Building and displaying help require no AWS account, credentials, worker, Python, or C compiler. The CLI builds on macOS, Linux, and Windows. `make build` runs the same build with CGO disabled.
+
+To install the latest release without cloning:
+
+```sh
+go install github.com/DanielZamb/athena-bridge/cmd/athena-bridge@latest
+```
 
 To install from this checkout:
 
@@ -187,7 +224,7 @@ Each diagnostic has `version`, `type`, stable local `code`, `operation`, sanitiz
 {"version":1,"type":"error","code":"QUERY_FAILED","operation":"wait_query","message":"query failed; inspect its status","query_id":"example-query","exit_code":1,"recovery":"inspect_query","partial_output":false,"published":false}
 ```
 
-Local codes distinguish arguments, configuration, authentication, authorization, throttling, transport, worker rejection/runtime, results not ready, protocol, query failure/cancellation, local I/O, context cancellation/deadline, output limit, result change, and internal failures. Recovery values are `none`, `fix_arguments`, `check_configuration`, `retry_operation`, `retry_same_request`, `inspect_query`, `wait_query`, `check_output`, and `check_worker`. Worker `NOT_READY` uses local code `NOT_READY` with `wait_query`; worker `RESULT_CHANGED` uses `RESULT_CHANGED` with `inspect_query`; worker `NOT_ALLOWED` uses `WORKER_REJECTED` with `none`. An uncertain submission uses `retry_same_request`; retain the request ID and identical SQL. `partial_output` reports incomplete streamed output or retained export progress, and `published` reports whether the destination was published. Raw SDK errors, worker messages, SQL, and signed URLs are not serialized into diagnostics.
+See [Troubleshoot Athena Bridge](docs/troubleshooting.md) for the next step after each code. Local codes distinguish arguments, configuration, authentication, authorization, throttling, transport, worker rejection/runtime, results not ready, protocol, query failure/cancellation, local I/O, context cancellation/deadline, output limit, result change, and internal failures. Recovery values are `none`, `fix_arguments`, `check_configuration`, `retry_operation`, `retry_same_request`, `inspect_query`, `wait_query`, `check_output`, and `check_worker`. Worker `NOT_READY` uses local code `NOT_READY` with `wait_query`; worker `RESULT_CHANGED` uses `RESULT_CHANGED` with `inspect_query`; worker `NOT_ALLOWED` uses `WORKER_REJECTED` with `none`. An uncertain submission uses `retry_same_request`; retain the request ID and identical SQL. `partial_output` reports incomplete streamed output or retained export progress, and `published` reports whether the destination was published. Raw SDK errors, worker messages, SQL, and signed URLs are not serialized into diagnostics.
 
 JSON output for tabular commands is one object:
 

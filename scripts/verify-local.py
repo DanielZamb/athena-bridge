@@ -1,5 +1,6 @@
 """Exercise the built CLI using a temporary AWS profile and local Lambda endpoint."""
 
+import argparse
 import csv
 import http.server
 import io
@@ -82,7 +83,10 @@ class Worker(http.server.BaseHTTPRequestHandler):
 
 
 def main():
-    binary = ROOT / "bin" / ("athena-bridge.exe" if os.name == "nt" else "athena-bridge")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--binary", type=Path,
+        default=ROOT / "bin" / ("athena-bridge.exe" if os.name == "nt" else "athena-bridge"))
+    binary = parser.parse_args().binary.resolve()
     if not binary.exists():
         raise SystemExit("Run make build first.")
     with tempfile.TemporaryDirectory(prefix="athena-bridge-proof-") as directory:
@@ -103,7 +107,8 @@ def main():
                                 "ATHENA_BRIDGE_FUNCTION": "local-worker", "ATHENA_BRIDGE_USAGE_DB": "off"})
 
             def call(*arguments, success=True):
-                result = subprocess.run([str(binary), *arguments], env=environment, capture_output=True, text=True, timeout=15)
+                result = subprocess.run([str(binary), *arguments], cwd=temporary, env=environment,
+                    capture_output=True, text=True, timeout=15)
                 if success and result.returncode:
                     raise AssertionError(result.stderr)
                 if not success and result.returncode == 0:

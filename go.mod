@@ -1,4 +1,4 @@
-module athena-bridge
+module github.com/DanielZamb/athena-bridge
 
 go 1.24.0
 

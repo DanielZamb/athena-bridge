@@ -10,6 +10,8 @@ permissions:
 env:
   AWS_EC2_METADATA_DISABLED: 'true'
   ATHENA_BRIDGE_USAGE_DB: 'off'
+  # Release archives are reproducible only with a fixed toolchain. Update this deliberately.
+  RELEASE_GO_VERSION: '1.27.3'
 
 jobs:
   verify:
@@ -29,8 +31,10 @@ jobs:
 
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # One native runner per published target, so each archive runs on its own platform.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest, windows-11-arm]
     runs-on: ${{ matrix.os }}
     env:
       CGO_ENABLED: '0'
@@ -40,7 +44,10 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: ${{ env.RELEASE_GO_VERSION }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.x'
       - run: go build -trimpath -o bin/ ./cmd/athena-bridge
       - if: runner.os != 'Windows'
         run: |
@@ -50,6 +57,14 @@ jobs:
         run: |
           .\bin\athena-bridge.exe --help
           .\bin\athena-bridge.exe version
+      - run: python scripts/package-release.py
+      - run: python scripts/verify-release.py --run
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: athena-bridge-${{ runner.os }}-${{ runner.arch }}
+          path: dist/athena-bridge_*
+          if-no-files-found: error
+          compression-level: 0
 
   secrets:
     runs-on: ubuntu-latest
@@ -60,9 +75,40 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: ${{ env.RELEASE_GO_VERSION }}
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.x'
       - run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
       - run: make secrets
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [verify, build, secrets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: athena-bridge-*
+          path: dist
+          merge-multiple: true
+      - run: python3 scripts/check-release.py "$GITHUB_REF_NAME" --assets dist > release-notes.md
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/athena-bridge_*.tar.gz
+            dist/athena-bridge_*.zip
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          case "$GITHUB_REF_NAME" in *-*) set -- --prerelease ;; *) set -- ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/athena-bridge_* "$@" --verify-tag \
+            --title "Athena Bridge $GITHUB_REF_NAME" --notes-file release-notes.md

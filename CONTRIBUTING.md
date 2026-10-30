@@ -54,6 +54,6 @@ The optional sandbox scripts create billable AWS resources. They are separate fr
 
 Preserve exact numeric text, SQL nulls, column order, and nonzero failure exit codes. Keep results on stdout and diagnostics on stderr. The CLI signs Lambda requests and coordinates local output. The worker owns Athena permissions, query policy, and result-file access.
 
-Run `make fmt`, `make verify`, and `make smoke` before submitting a behavior change. Include the behavior you changed and the checks you ran in the pull request. Remove SQL, credentials, result data, signed URLs, and local account details from issue reports.
+Run `make fmt`, `make verify`, and `make smoke` before submitting a behavior change. Include the behavior you changed and the checks you ran in the pull request. Describe user-visible changes in [CHANGELOG.md](CHANGELOG.md) under the next version. Remove SQL, credentials, result data, signed URLs, and local account details from issue reports.
 
-See [Publish a source release](docs/publishing.md) before publishing a release.
+See [Package a release](docs/publishing.md) for compact binary downloads and source releases.

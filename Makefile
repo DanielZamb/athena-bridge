@@ -1,4 +1,4 @@
-.PHONY: build test vet verify fmt install smoke secrets source
+.PHONY: build test vet verify fmt install smoke secrets source release
 
 build:
 	CGO_ENABLED=0 go build -trimpath -o bin/ ./cmd/athena-bridge
@@ -23,6 +23,9 @@ smoke: build
 
 secrets:
 	python3 scripts/check-secrets.py
+
+release:
+	python3 scripts/package-release.py
 
 source:
 	@if ! git diff --quiet HEAD -- || [ -n "$$(git ls-files --others --exclude-standard)" ]; then \
