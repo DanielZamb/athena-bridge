@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a command that fails or returns wrong results.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [Troubleshoot Athena Bridge](https://github.com/DanielZamb/athena-bridge/blob/main/docs/troubleshooting.md) first. Remove AWS keys, session tokens, account IDs, signed URLs, query results, and private SQL before posting. Report security issues privately as described in [SECURITY.md](https://github.com/DanielZamb/athena-bridge/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `athena-bridge version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64, Windows arm64]
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options: [Binary download, go install, Built from source]
+    validations:
+      required: true
+  - type: dropdown
+    id: worker
+    attributes:
+      label: Worker
+      options: [Example worker from this repository, Modified example worker, Own worker]
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The full command with its flags. Replace private SQL, database names, and table names with placeholders.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Standard error and exit code
+      description: The complete JSON Lines diagnostics from standard error, followed by the exit code.
+      render: json
+    validations:
+      required: true
+  - type: dropdown
+    id: info
+    attributes:
+      label: Does `athena-bridge info --format json` succeed?
+      options: ["Yes", "No", Not tried]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true

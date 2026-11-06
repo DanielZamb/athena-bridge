@@ -1,0 +1,14 @@
+title = "Athena Bridge secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Fixed request ID used by local CLI fixtures, not an authentication token"
+condition = "AND"
+paths = ['''^scripts/verify-local\.py$''', '''^\.agents/skills/verify-athena-bridge/drive\.py$''']
+regexTarget = "secret"
+regexes = ['''^0123456789abcdef0123456789abcdef$''']
